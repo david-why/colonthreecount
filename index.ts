@@ -18,6 +18,13 @@ interface Channel {
   last_ts: string
 }
 
+interface ChannelCount {
+  id: number
+  channel_id: string
+  user_id: string
+  count: number
+}
+
 async function getLastHandledTimestamp(channel: string) {
   const [chan] = await sql<
     Channel[]
@@ -29,10 +36,24 @@ async function getLastHandledTimestamp(channel: string) {
 }
 
 async function setLastHandledTimestamp(channel: string, ts: string) {
-  const payload = { id: channel, last_ts: ts }
+  const payload: Partial<Channel> = { id: channel, last_ts: ts }
   await sql`INSERT INTO channels ${sql(
     payload
   )} ON CONFLICT (id) DO UPDATE SET last_ts = EXCLUDED.last_ts`
+}
+
+async function getLastCount(channel: string) {
+  const [count] = await sql<
+    ChannelCount[]
+  >`SELECT * FROM channel_count WHERE channel_id = ${channel} ORDER BY count DESC LIMIT 1`
+  if (!count) {
+    return { user_id: 'USLACKBOT', count: 0 }
+  }
+  return count
+}
+
+async function addCount(count: Omit<ChannelCount, 'id'>) {
+  await sql`INSERT INTO channel_count ${sql(count)}`
 }
 
 // the message handling stuff
@@ -61,10 +82,47 @@ async function handleNewMessages(channel: string) {
       )
 
       for (const message of messages) {
-        if (message.subtype && !['file_share'].includes(message.subtype))
+        if (
+          (message.subtype && !['file_share'].includes(message.subtype)) ||
+          !message.user ||
+          !message.ts
+        )
           continue
 
-        console.log(message.text)
+        if (message.text !== ':3' && !message.text?.startsWith(':3 ')) {
+          app.client.reactions.add({
+            channel,
+            timestamp: message.ts,
+            name: 'bangbang',
+          })
+          app.client.chat.postEphemeral({
+            channel,
+            user: message.user,
+            text: `:3 non-thread messages must start with :3, and optionally a space followed by more text!`,
+          })
+        } else {
+          const last = await getLastCount(channel)
+          if (last.user_id === message.user) {
+            app.client.reactions.add({
+              channel,
+              timestamp: message.ts,
+              name: 'bangbang',
+            })
+            app.client.chat.postEphemeral({
+              channel,
+              user: message.user,
+              text: `:3 ur cute but u can't :3 twice in a row!`,
+            })
+          } else {
+            const num = last.count + 1
+            await addCount({
+              channel_id: channel,
+              count: num,
+              user_id: message.user!,
+            })
+            addReactions(channel, message.ts, num)
+          }
+        }
       }
 
       await setLastHandledTimestamp(channel, messages[messages.length - 1]!.ts!)
@@ -72,6 +130,15 @@ async function handleNewMessages(channel: string) {
   } finally {
     handling.delete(channel)
   }
+}
+
+async function addReactions(channel: string, ts: string, count: number) {
+  // for debugging
+  await app.client.chat.postMessage({
+    channel,
+    thread_ts: ts,
+    text: `[debug] count: ${count}`,
+  })
 }
 
 // handlers and stuff
