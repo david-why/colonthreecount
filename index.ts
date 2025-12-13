@@ -134,11 +134,20 @@ async function handleNewMessages(channel: string) {
 
 async function addReactions(channel: string, ts: string, count: number) {
   // for debugging
-  await app.client.chat.postMessage({
-    channel,
-    thread_ts: ts,
-    text: `[debug] count: ${count}`,
-  })
+  // await app.client.chat.postMessage({
+  //   channel,
+  //   thread_ts: ts,
+  //   text: `[debug] count: ${count}`,
+  // })
+  const digits = Math.floor(count).toString()
+  for (const [idx, digit] of Array.from(digits).entries()) {
+    const num = parseInt(digit)
+    await app.client.reactions.add({
+      channel,
+      timestamp: ts,
+      name: `colonthreecount_${num}_${idx}`,
+    })
+  }
 }
 
 // handlers and stuff
