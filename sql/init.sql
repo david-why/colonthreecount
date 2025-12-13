@@ -1,0 +1,4 @@
+CREATE TABLE IF NOT EXISTS channels (
+    id TEXT NOT NULL PRIMARY KEY,
+    last_ts TEXT NOT NULL
+);
