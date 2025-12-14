@@ -89,7 +89,7 @@ async function handleNewMessages(channel: string) {
         )
           continue
 
-        if (message.text !== ':3' && !message.text?.startsWith(':3 ')) {
+        if (!message.text?.startsWith(':3')) {
           app.client.reactions.add({
             channel,
             timestamp: message.ts,
@@ -98,7 +98,7 @@ async function handleNewMessages(channel: string) {
           app.client.chat.postEphemeral({
             channel,
             user: message.user,
-            text: `:3 non-thread messages must start with :3, and optionally a space followed by more text!`,
+            text: `:3 non-thread messages must start with :3, optionally followed by more text!`,
           })
         } else {
           const last = await getLastCount(channel)
