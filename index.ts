@@ -147,6 +147,7 @@ async function addReactions(channel: string, ts: string, count: number) {
       timestamp: ts,
       name: `colonthreecount_${num}_${idx}`,
     })
+    await new Promise(resolve => setTimeout(resolve, 1000))
   }
 }
 
